@@ -39,8 +39,8 @@ Before you begin, ensure you have the following installed on your system:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/prometheus-lua/Prometheus-discord-bot.git
-cd Prometheus-discord-bot
+git clone https://github.com/UnknownCodersonLT4/Slayerson-Lua-Obfuscator-WORKING-/tree/main.git
+cd Slayersons Lua Obfusctor-discord-bot
 ```
 
 ### 2. Install Dependencies
