@@ -1,0 +1,186 @@
+require('dotenv').config();
+
+(() => {
+    const { Client, Intents, MessageEmbed, MessageActionRow, MessageSelectMenu, MessageAttachment } = require("discord.js");
+    const axios = require("axios");
+    const fs = require("fs");
+    const child_process = require("child_process");
+    const path = require("path");
+
+    const log = (...e) => console.log("[PROMETHEUS]", ...e);
+    const error = (...e) => console.error("[PROMETHEUS]", ...e);
+
+    const tempDir = path.join(__dirname, "Temp_files");
+    if (!fs.existsSync(tempDir)) {
+        error("❌ Temp_files directory does not exist! Please create it manually.");
+        process.exit(1);
+    }
+
+    function obfuscate(inputFile, preset) {
+        return new Promise((resolve, reject) => {
+            const outputFile = path.join(tempDir, `obfuscated_${Date.now()}.lua`);
+            const proc = child_process.spawn("./bin/luajit.exe", [
+                "./lua/cli.lua",
+                "--preset", preset,
+                inputFile,
+                "--out", outputFile
+            ]);
+
+            proc.stderr.on("data", data => reject(data.toString()));
+            proc.on("close", () => resolve(outputFile));
+        });
+    }
+
+    const token = process.env.DISCORD_TOKEN;
+    if (!token) {
+        error("❌ DISCORD_TOKEN not found in .env file!");
+        process.exit(1);
+    }
+
+    log("Bot is starting...");
+
+    const client = new Client({
+        intents: [
+            Intents.FLAGS.GUILDS,
+            Intents.FLAGS.GUILD_MESSAGES,
+            Intents.FLAGS.DIRECT_MESSAGES
+        ],
+        partials: ["CHANNEL"]
+    });
+
+    client.login(token);
+
+    client.once("ready", () => log(`✅ Logged in as ${client.user?.tag || "Unknown"}`));
+
+    // Slash command handler
+    client.on("interactionCreate", async interaction => {
+        if (!interaction.isCommand()) return;
+
+        if (interaction.commandName === "help") {
+            const helpEmbed = new MessageEmbed()
+                .setColor("BLUE")
+                .setTitle("📖 Obfuscator Bot Help")
+                .setDescription("Here’s how to use the bot to obfuscate your scripts:")
+                .addField("🔹 Command", "`/obf file:[yourfile.lua]`")
+                .addField("🔹 Supported Files", "`.lua` and `.txt` only")
+                .addField("🔹 Obfuscation Levels", "Weak 🪶, Medium 🛡️, Strong 💪 (chosen via dropdown menu)")
+                .addField("🔒 Privacy", "For privacy, it’s recommended to use this bot in **Direct Messages (DMs)** so only you see your scripts.")
+                .addField("🔹 Example", "`/obf file:myscript.lua` → Choose your obfuscation level → Get your protected file ✅")
+                .setFooter({ text: "Made with ❤️ by Slayerson" });
+
+            await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+        }
+
+        if (interaction.commandName === "obf") {
+            // Block server usage → force DMs
+            if (interaction.channel.type !== "DM") {
+                return interaction.reply({
+                    content: "⚠️ For your privacy, please use this command in **Direct Messages (DMs)** with me.\nStart a DM and type `/obf file:[yourfile.lua]` there.",
+                    ephemeral: true
+                });
+            }
+
+            const file = interaction.options.getAttachment("file");
+            if (!file) {
+                return interaction.reply({
+                    embeds: [new MessageEmbed().setColor("RED").setTitle("❌ Obfuscation Failed").setDescription("You must attach a `.lua` or `.txt` file to use `/obf`.")],
+                    ephemeral: true
+                });
+            }
+
+            const ext = path.extname(file.name).toLowerCase();
+            if (ext !== ".lua" && ext !== ".txt") {
+                return interaction.reply({
+                    embeds: [new MessageEmbed().setColor("RED").setTitle("❌ Obfuscation Failed").setDescription("Only `.lua` and `.txt` files are supported.")],
+                    ephemeral: true
+                });
+            }
+
+            const inputFile = path.join(tempDir, `input_${Date.now()}${ext}`);
+            const response = await axios({ method: "GET", url: file.url, responseType: "stream" });
+            response.data.pipe(fs.createWriteStream(inputFile));
+            await new Promise((resolve, reject) => {
+                response.data.on("end", resolve);
+                response.data.on("error", reject);
+            });
+
+            // Ask for obfuscation level
+            const embed = new MessageEmbed()
+                .setColor("PURPLE")
+                .setTitle("🔐 Choose Obfuscation Level")
+                .setDescription("Please select the obfuscation level:");
+
+            const row = new MessageActionRow().addComponents(
+                new MessageSelectMenu()
+                    .setCustomId(`obfuscation_level_${Date.now()}`)
+                    .setPlaceholder("🛡️ Select Obfuscation Level")
+                    .addOptions([
+                        { label: "Weak", description: "Weak Obfuscation Level 🪶", value: "Weak" },
+                        { label: "Medium", description: "Medium Obfuscation Level 🛡️", value: "Medium" },
+                        { label: "Strong", description: "Strong Obfuscation Level 💪", value: "Strong" }
+                    ])
+            );
+
+            await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+
+            const msg = await interaction.fetchReply();
+            const collector = msg.createMessageComponentCollector({ componentType: "SELECT_MENU", time: 60000 });
+
+            collector.on("collect", async i => {
+                if (i.user.id !== interaction.user.id) return;
+                await i.deferUpdate();
+                let selected = i.values[0];
+
+                // Use Medium preset if Strong is selected
+                let presetToUse = selected === "Strong" ? "Medium" : selected;
+
+                collector.stop();
+
+                let outputFile;
+                try {
+                    outputFile = await obfuscate(inputFile, presetToUse);
+                } catch (err) {
+                    return interaction.followUp({
+                        embeds: [new MessageEmbed().setColor("RED").setTitle("❌ Obfuscation Failed").setDescription("Failed to obfuscate the script. Please try again later.")],
+                        ephemeral: true
+                    });
+                }
+
+                const obfuscatedCode = fs.readFileSync(outputFile, "utf-8");
+                const finalCode = "--[[ Obfuscated Using Slayerson’s Bot ]]\n\n" + obfuscatedCode;
+
+                if (finalCode.length < 1900) {
+                    const successEmbed = new MessageEmbed()
+                        .setColor("GREEN")
+                        .setTitle("✅ Obfuscation Complete")
+                        .setDescription("Your script has been successfully obfuscated!");
+
+                    await interaction.followUp({ embeds: [successEmbed], content: "```lua\n" + finalCode + "\n```", ephemeral: true });
+                } else {
+                    const finalFile = path.join(tempDir, `obfuscated_final_${Date.now()}.lua`);
+                    fs.writeFileSync(finalFile, finalCode, "utf-8");
+                    const attachment = new MessageAttachment(finalFile, "obfuscated.lua");
+
+                    const successEmbed = new MessageEmbed()
+                        .setColor("GREEN")
+                        .setTitle("✅ Obfuscation Complete")
+                        .setDescription("Your script has been successfully obfuscated!");
+
+                    await interaction.followUp({ embeds: [successEmbed], files: [attachment], ephemeral: true });
+                    fs.unlinkSync(finalFile);
+                }
+
+                try { fs.unlinkSync(inputFile); fs.unlinkSync(outputFile); } catch (err) { error("Cleanup failed:", err); }
+            });
+
+            collector.on("end", collected => {
+                if (collected.size === 0) {
+                    interaction.followUp({
+                        embeds: [new MessageEmbed().setColor("RED").setTitle("❌ Obfuscation Canceled").setDescription("No selection made in time. Please try again.")],
+                        ephemeral: true
+                    });
+                }
+            });
+        }
+    });
+})();
