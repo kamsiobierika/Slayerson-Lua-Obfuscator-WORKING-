@@ -72,22 +72,22 @@ function createBot(token, botNumber) {
 `📖 Obfuscator Bot Help
 Here’s how to use the bot to obfuscate your scripts:
 🔹 Command
-.obf [attach your .lua or .txt file]
+.obf [attach your .lua/.txt file or paste inside a codeblock]
 🔹 Supported Files
-.lua and .txt only
+.lua and .txt only, or codeblocks
 🔹 Obfuscation Levels
-Weak 🪶, Medium 🛡️, Strong 💪 (chosen via dropdown menu)
+Weak 🪶, Medium 🛡️, Strong 💪 (chosen via dropdown)
 🔒 Privacy
-For privacy, it’s recommended to use this bot in Direct Messages (DMs).
+Use this bot in Direct Messages (DMs) for privacy.
 🔹 Example
-.obf → Attach your script → Choose your obfuscation level → Get your protected file ✅
+.obf → Attach file OR paste in codeblock → Choose obfuscation level → Get protected file ✅
 Made with ❤️ by Slayerson`;
 
       const helpEmbed = new MessageEmbed()
         .setColor("BLUE")
         .setTitle("📖 Obfuscator Bot Help")
         .setDescription(helpText)
-        .setFooter({ text: "Made by Slayerson • Credits to Vyxonq for the idea • Powered by Nyx Obfuscator" });
+        .setFooter({ text: "Made by Slayerson • Credits to Vyxonq • Powered by Nyx Obfuscator" });
 
       msg.channel.send({ embeds: [helpEmbed] }).catch((err) => error("Failed to send help message:", err));
       return;
@@ -99,21 +99,7 @@ Made with ❤️ by Slayerson`;
       let originalFileName;
 
       const attachment = msg.attachments.first();
-      if (!attachment) {
-        const codeBlockMatch = msg.content.match(/```(?:lua)?\n([\s\S]*?)```/i);
-        if (!codeBlockMatch) {
-          const errorEmbed = new MessageEmbed()
-            .setColor("RED")
-            .setTitle("❌ Obfuscation Failed")
-            .setDescription("You must attach a `.lua` or `.txt` file to use `.obf`!\nWe apologize for the inconvenience. 🙏");
-          msg.reply({ embeds: [errorEmbed] });
-          return;
-        }
-        const code = codeBlockMatch[1];
-        inputFile = path.join(tempDir, `input_${Date.now()}.lua`);
-        fs.writeFileSync(inputFile, code, "utf-8");
-        originalFileName = `codeblock_${Date.now()}.lua`;
-      } else {
+      if (attachment) {
         const ext = path.extname(attachment.name).toLowerCase();
         if (ext !== ".lua" && ext !== ".txt") {
           const errorEmbed = new MessageEmbed()
@@ -131,8 +117,22 @@ Made with ❤️ by Slayerson`;
           response.data.on("end", resolve);
           response.data.on("error", reject);
         });
-
         originalFileName = attachment.name;
+      } else {
+        const codeBlockMatch = msg.content.match(/```(?:lua)?\n([\s\S]*?)```/i);
+        if (!codeBlockMatch) {
+          const errorEmbed = new MessageEmbed()
+            .setColor("RED")
+            .setTitle("❌ Obfuscation Failed")
+            .setDescription("You must attach a `.lua` or `.txt` file to use `.obf`!\nWe apologize for the inconvenience. 🙏");
+          msg.reply({ embeds: [errorEmbed] });
+          return;
+        }
+
+        const code = codeBlockMatch[1];
+        inputFile = path.join(tempDir, `input_${Date.now()}.lua`);
+        fs.writeFileSync(inputFile, code, "utf-8");
+        originalFileName = `codeblock_${Date.now()}.lua`;
       }
 
       // Ask for level
@@ -176,7 +176,6 @@ Made with ❤️ by Slayerson`;
           return;
         }
 
-        // Build final code with watermark
         const obfuscatedCode = fs.readFileSync(outputFile, "utf-8");
         const watermark = `--[[
 
@@ -190,7 +189,7 @@ This Script Was Obfuscated Using Nyx Obfuscator Made for Omega Hub!
         const finalFile = path.join(tempDir, `obfuscated_final_${Date.now()}.lua`);
         fs.writeFileSync(finalFile, finalCode, "utf-8");
 
-        // === Upload to STORAGE channel ===
+        // Upload to storage
         let fileUrl;
         try {
           const storageChannel = await ensureStorageChannel(client);
@@ -211,7 +210,7 @@ This Script Was Obfuscated Using Nyx Obfuscator Made for Omega Hub!
           .setColor("DARK_BLUE")
           .setTitle("Obfuscation Results")
           .setDescription(`${originalFileName}\n[ Click here to download](${fileUrl})\n\n\`\`\`lua\n${preview}\n\`\`\``)
-          .setFooter({ text: "Made by Slayerson • Credits to Vyxonq for the idea • Powered by Nyx Obfuscator" });
+          .setFooter({ text: "Made by Slayerson • Credits to Vyxonq • Powered by Nyx Obfuscator" });
 
         await msg.reply({ embeds: [successEmbed] });
 
