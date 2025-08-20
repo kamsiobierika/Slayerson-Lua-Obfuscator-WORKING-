@@ -72,15 +72,15 @@ function createBot(token, botNumber) {
 `📖 Obfuscator Bot Help
 Here’s how to use the bot to obfuscate your scripts:
 🔹 Command
-.obf [attach your .lua or .txt file OR paste code in a codeblock]
+.obf [attach your .lua or .txt file]
 🔹 Supported Files
-.lua, .txt, and codeblocks
+.lua and .txt only
 🔹 Obfuscation Levels
 Weak 🪶, Medium 🛡️, Strong 💪 (chosen via dropdown menu)
 🔒 Privacy
 For privacy, it’s recommended to use this bot in Direct Messages (DMs).
 🔹 Example
-.obf → Attach your script / paste codeblock → Choose your obfuscation level → Get your protected file ✅
+.obf → Attach your script → Choose your obfuscation level → Get your protected file ✅
 Made with ❤️ by Slayerson`;
 
       const helpEmbed = new MessageEmbed()
@@ -97,17 +97,30 @@ Made with ❤️ by Slayerson`;
     if (msg.content.toLowerCase().startsWith(".obf")) {
       let inputFile;
       let originalFileName;
-      const attachment = msg.attachments.first();
 
-      if (attachment) {
-        // === Handle file attachment ===
+      const attachment = msg.attachments.first();
+      if (!attachment) {
+        const codeBlockMatch = msg.content.match(/```(?:lua)?\n([\s\S]*?)```/i);
+        if (!codeBlockMatch) {
+          const errorEmbed = new MessageEmbed()
+            .setColor("RED")
+            .setTitle("❌ Obfuscation Failed")
+            .setDescription("You must attach a `.lua` or `.txt` file to use `.obf`!\nWe apologize for the inconvenience. 🙏");
+          msg.reply({ embeds: [errorEmbed] });
+          return;
+        }
+        const code = codeBlockMatch[1];
+        inputFile = path.join(tempDir, `input_${Date.now()}.lua`);
+        fs.writeFileSync(inputFile, code, "utf-8");
+        originalFileName = `codeblock_${Date.now()}.lua`;
+      } else {
         const ext = path.extname(attachment.name).toLowerCase();
         if (ext !== ".lua" && ext !== ".txt") {
           const errorEmbed = new MessageEmbed()
             .setColor("RED")
             .setTitle("❌ Obfuscation Failed")
             .setDescription("Only `.lua` and `.txt` files are supported!\nWe apologize for the inconvenience. 🙏");
-          await msg.reply({ embeds: [errorEmbed] });
+          msg.reply({ embeds: [errorEmbed] });
           return;
         }
 
@@ -120,22 +133,6 @@ Made with ❤️ by Slayerson`;
         });
 
         originalFileName = attachment.name;
-      } else {
-        // === Handle codeblock ===
-        const codeBlockMatch = msg.content.match(/```(?:lua)?\n([\s\S]*?)```/i);
-        if (!codeBlockMatch) {
-          const errorEmbed = new MessageEmbed()
-            .setColor("RED")
-            .setTitle("❌ Obfuscation Failed")
-            .setDescription("You must attach a `.lua` or `.txt` file **or** include a codeblock to use `.obf`!\nWe apologize for the inconvenience. 🙏");
-          await msg.reply({ embeds: [errorEmbed] });
-          return;
-        }
-
-        const code = codeBlockMatch[1];
-        inputFile = path.join(tempDir, `input_${Date.now()}.lua`);
-        fs.writeFileSync(inputFile, code, "utf-8");
-        originalFileName = `codeblock_${Date.now()}.lua`;
       }
 
       // Ask for level
@@ -171,7 +168,7 @@ Made with ❤️ by Slayerson`;
 
         let outputFile;
         try {
-          const presetToUse = selected === "Strong" ? "Medium" : selected; // your original behavior
+          const presetToUse = selected === "Strong" ? "Medium" : selected;
           outputFile = await obfuscate(inputFile, presetToUse);
         } catch (err) {
           error(err);
@@ -222,7 +219,7 @@ This Script Was Obfuscated Using Nyx Obfuscator Made for Omega Hub!
         try { await promptMsg.delete(); } catch {}
       });
 
-      collector.on("end", (collected) => {
+      collector.on("end", collected => { 
         if (collected.size === 0) {
           const cancelEmbed = new MessageEmbed()
             .setColor("RED")
