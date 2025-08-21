@@ -1,0 +1,10 @@
+const row = new MessageActionRow().addComponents(
+  new MessageSelectMenu()
+    .setCustomId(`obfuscation_level_${Date.now()}`)
+    .setPlaceholder("🛡️ Select Obfuscation Level")
+    .addOptions([
+      { label: "Weak", description: "Weak Obfuscation Level 🪶", value: "Weak" },
+      { label: "Medium", description: "Medium Obfuscation Level 🛡️", value: "Medium" },
+      { label: "Strong", description: "Strong Obfuscation Level 💪", value: "Strong" },
+    ])
+);
