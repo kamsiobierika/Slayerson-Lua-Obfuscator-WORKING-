@@ -3,6 +3,6 @@ services:
   bot:
     build: .
     container_name: myobfuscator
-    env_file: 
+    env_file:
       - .env
-    command: ["node", "./index.js"]
+    command: ["node", "simple/index.js"]
