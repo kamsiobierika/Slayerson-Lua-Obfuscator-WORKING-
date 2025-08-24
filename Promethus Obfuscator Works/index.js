@@ -1,9 +1,14 @@
 require("dotenv").config();
 (() => {
-    const r = require("discord.js");
-    const O = require("axios");
-    const E = require("fs");
-    const y = require("child_process");
+    const {
+        Client,
+        GatewayIntentBits,
+        Partials,
+        AttachmentBuilder
+    } = require("discord.js");
+    const axios = require("axios");
+    const fs = require("fs");
+    const { spawn } = require("child_process");
     const path = require("path");
     const express = require("express");
 
@@ -13,7 +18,7 @@ require("dotenv").config();
     };
 
     const tempDir = path.join(__dirname, "Temp_files");
-    if (!E.existsSync(tempDir)) {
+    if (!fs.existsSync(tempDir)) {
         l.error("❌ Temp_files directory does not exist! Please create it manually.");
         process.exit(1);
     }
@@ -21,7 +26,7 @@ require("dotenv").config();
     function obfuscate(inputFile, preset) {
         return new Promise((resolve, reject) => {
             let outputFile = path.join(tempDir, `obfuscated_${Date.now()}.lua`);
-            let proc = y.spawn("./bin/luajit.exe", [
+            let proc = spawn("./bin/luajit.exe", [
                 "./lua/cli.lua",
                 "--preset", preset,
                 inputFile,
@@ -41,13 +46,14 @@ require("dotenv").config();
 
     l.log("Bot is starting...");
 
-    const client = new r.Client({
+    const client = new Client({
         intents: [
-            r.Intents.FLAGS.GUILDS,
-            r.Intents.FLAGS.GUILD_MESSAGES,
-            r.Intents.FLAGS.DIRECT_MESSAGES
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildMessages,
+            GatewayIntentBits.DirectMessages,
+            GatewayIntentBits.MessageContent
         ],
-        partials: ["CHANNEL"]
+        partials: [Partials.Channel]
     });
 
     client.login(token);
@@ -58,22 +64,22 @@ require("dotenv").config();
 
     client.on("messageCreate", async msg => {
         if (msg.author.bot) return;
-        if (!msg.content.startsWith(".obf")) return; // ✅ Only trigger with .obf
+        if (!msg.content.startsWith(".obf")) return; // only run with .obf
 
         let fileUrl = msg.attachments.first()?.url;
         if (!fileUrl) {
-            msg.reply("⚠️ Please upload a **Lua file** with the `.obf` command!");
+            await msg.reply("⚠️ Please upload a **Lua file** with the `.obf` command!");
             return;
         }
 
         let inputFile = path.join(tempDir, `input_${Date.now()}.lua`);
-        let response = await O({
+        let response = await axios({
             method: "GET",
             url: fileUrl,
             responseType: "stream"
         });
 
-        response.data.pipe(E.createWriteStream(inputFile));
+        response.data.pipe(fs.createWriteStream(inputFile));
 
         await new Promise((resolve, reject) => {
             response.data.on("end", resolve);
@@ -84,22 +90,22 @@ require("dotenv").config();
         try {
             outputFile = await obfuscate(inputFile, "Medium");
         } catch (err) {
-            msg.reply("❌ Obfuscation failed:\n```\n" + err + "\n```");
+            await msg.reply("❌ Obfuscation failed:\n```\n" + err + "\n```");
             return;
         }
 
-        const obfuscatedCode = E.readFileSync(outputFile, "utf-8");
+        const obfuscatedCode = fs.readFileSync(outputFile, "utf-8");
 
         if (obfuscatedCode.length < 1900) {
             await msg.reply("```lua\n" + obfuscatedCode + "\n```");
         } else {
-            const attachment = new r.MessageAttachment(outputFile, "obfuscated.lua");
+            const attachment = new AttachmentBuilder(outputFile, { name: "obfuscated.lua" });
             await msg.reply({ files: [attachment] });
         }
 
         try {
-            E.unlinkSync(inputFile);
-            E.unlinkSync(outputFile);
+            fs.unlinkSync(inputFile);
+            fs.unlinkSync(outputFile);
         } catch (err) {
             l.error("Cleanup failed:", err);
         }
@@ -107,8 +113,7 @@ require("dotenv").config();
 
     // ✅ Keepalive server for Render
     const app = express();
-    const PORT = 3000; // fixed port
+    const PORT = process.env.PORT || 3000;
     app.get("/", (req, res) => res.send("✅ Prometheus bot is running!"));
     app.listen(PORT, () => l.log(`🌍 Server running on port ${PORT}`));
 })();
-
