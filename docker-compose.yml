@@ -5,4 +5,4 @@ services:
     container_name: myobfuscator
     env_file: 
       - .env
-    command: ["node", "np/index.js"]
+    command: ["node", "./index.js"]
