@@ -6,7 +6,7 @@ services:
     region: oregon
 
     buildCommand: npm install
-    startCommand: node Promethus Obfuscator Works/index.js
+    startCommand: node "Prometheus Obfuscator Works/index.js"
 
     envVars:
       - key: DISCORD_TOKEN
