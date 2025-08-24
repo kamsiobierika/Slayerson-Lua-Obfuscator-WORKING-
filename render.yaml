@@ -1,6 +1,6 @@
 services:
   - type: worker
-    name: boronide-bot
+    name: myobfuscator
     env: node
     plan: free
     region: oregon
