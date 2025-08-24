@@ -1,9 +1,9 @@
 {
-  "name": "prometheus-obfuscator-bot",
+  "name": "promethus-obfuscator-bot",
   "version": "1.0.0",
-  "main": "prometheus-obfuscator/index.js",
+  "main": "Promethus Obfuscator Works/index.js",
   "scripts": {
-    "start": "node prometheus-obfuscator/index.js",
+    "start": "node 'Promethus Obfuscator Works/index.js'",
     "build": "echo Skipping build step"
   },
   "dependencies": {
