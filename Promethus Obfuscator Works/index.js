@@ -107,7 +107,8 @@ require("dotenv").config();
 
     // ✅ Keepalive server for Render
     const app = express();
-    const PORT = 4000; // fixed port
+    const PORT = 3000; // fixed port
     app.get("/", (req, res) => res.send("✅ Prometheus bot is running!"));
     app.listen(PORT, () => l.log(`🌍 Server running on port ${PORT}`));
 })();
+
