@@ -1,10 +1,11 @@
-require('dotenv').config();
+require("dotenv").config();
 (() => {
     const r = require("discord.js");
     const O = require("axios");
     const E = require("fs");
     const y = require("child_process");
     const path = require("path");
+    const express = require("express");
 
     const l = {
         log: (...e) => console.log("[PROMETHEUS]", ...e),
@@ -52,15 +53,16 @@ require('dotenv').config();
     client.login(token);
 
     client.once("ready", () => {
-        l.log(`Logged in as ${client.user?.tag || "Unknown"}`);
+        l.log(`✅ Logged in as ${client.user?.tag || "Unknown"}`);
     });
 
     client.on("messageCreate", async msg => {
         if (msg.author.bot) return;
+        if (!msg.content.startsWith(".obf")) return; // ✅ Only trigger with .obf
 
         let fileUrl = msg.attachments.first()?.url;
         if (!fileUrl) {
-            msg.reply("Please upload a Lua file!");
+            msg.reply("⚠️ Please upload a **Lua file** with the `.obf` command!");
             return;
         }
 
@@ -102,4 +104,10 @@ require('dotenv').config();
             l.error("Cleanup failed:", err);
         }
     });
+
+    // ✅ Keepalive server for Render
+    const app = express();
+    const PORT = 4000; // fixed port
+    app.get("/", (req, res) => res.send("✅ Prometheus bot is running!"));
+    app.listen(PORT, () => l.log(`🌍 Server running on port ${PORT}`));
 })();
