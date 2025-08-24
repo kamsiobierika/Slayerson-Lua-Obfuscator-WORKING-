@@ -6,7 +6,7 @@ services:
     region: oregon
 
     buildCommand: npm install
-    startCommand: node np/index.js   # 👈 FIXED (was mp/index.js)
+    startCommand: node ./index.js   # 👈 FIXED (was mp/index.js)
 
     envVars:
       - key: DISCORD_TOKEN
