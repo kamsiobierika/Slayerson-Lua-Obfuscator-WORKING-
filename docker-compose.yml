@@ -2,7 +2,7 @@ version: "3.8"
 services:
   bot:
     build: .
-    container_name: MyObfuscators.my
+    container_name: myobfuscator
     env_file: 
       - .env
 command: ["node", "Promethus Obfuscator Works/index.js"]
