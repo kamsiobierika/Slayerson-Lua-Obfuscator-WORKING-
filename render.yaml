@@ -1,15 +1,11 @@
 services:
-  - type: worker
-    name: myobfuscator
+  - type: web
+    name: lua-obfuscator-bot
     env: node
     plan: free
-    region: oregon
-
-    buildCommand: npm install
-    startCommand: node ./index.js   # 👈 FIXED (was mp/index.js)
-
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    autoDeploy: true
     envVars:
       - key: DISCORD_TOKEN
         sync: false
-      - key: NODE_ENV
-        value: production
