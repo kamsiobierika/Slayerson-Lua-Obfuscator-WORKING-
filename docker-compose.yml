@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+bot:
+build:
+container_name: Slayerson Obfuscator
+env_file:
+- .env
+
+command: ["node", "Promethus Obfuscator Works/index.js"]
