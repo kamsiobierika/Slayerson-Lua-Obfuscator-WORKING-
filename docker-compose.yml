@@ -5,4 +5,4 @@ services:
     container_name: myobfuscator
     env_file: 
       - .env
-command: ["node", "Promethus Obfuscator Works/index.js"]
+    command: ["node", "Prometheus Obfuscator Works/index.js"]
