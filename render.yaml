@@ -1,0 +1,15 @@
+services:
+  - type: worker
+    name: boronide-bot
+    env: node
+    plan: free
+    region: oregon
+
+    buildCommand: npm install
+    startCommand: node Promethus Obfuscator Works/index.js
+
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: NODE_ENV
+        value: production
